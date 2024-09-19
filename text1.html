@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RSA 加密解密</title>
+<style>
+    body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background-image: url('C:/Users/happy/Desktop/010730-17137192502bc7.jpg');
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center;
+        backdrop-filter: blur(5px);
+    }
+
+    .container {
+        text-align: center;
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 20px;
+        border-radius: 10px;
+    }
+
+    label {
+        font-weight: bold;
+    }
+
+    input[type="file"], input[type="text"], textarea {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        transition: border-color 0.3s ease-in-out;
+    }
+
+    input[type="file"]:hover, input[type="text"]:hover, textarea:hover {
+        border-color: #555;
+    }
+
+    button {
+        padding: 10px 20px;
+        background-color: #4CAF50;
+        color: #fff;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease-in-out;
+    }
+
+    button:hover {
+        background-color: #45a049;
+    }
+
+    button:active {
+        background-color: #3e8e41;
+    }
+
+    /* 保留换行和空格 */
+    textarea {
+        white-space: pre-wrap;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h2>RSA 加密解密</h2>
+
+    <!-- 文件输入 -->
+    <label for="fileInput">选择文件:</label><br>
+    <input type="file" id="fileInput">
+    <!-- 读取文件按钮 -->
+    <button onclick="readFile()">读取文件</button><br>
+
+    <!-- 用户输入的文本 -->
+    <label for="inputText">输入文本:</label><br>
+    <input type="text" id="inputText"><br>
+
+    <!-- 加密结果展示区域 -->
+    <label for="encryptedText">加密结果:</label><br>
+    <!-- 文本输出框，用于显示加密后的内容 -->
+    <textarea id="encryptedText" rows="4" cols="50"></textarea><br>
+
+    <!-- 解密结果展示区域 -->
+    <label for="decryptedText">解密结果:</label><br>
+    <!-- 文本输出框，用于显示解密后的内容 -->
+    <textarea id="decryptedText" rows="4" cols="50"></textarea><br>
+
+    <!-- 加密按钮，点击时调用encrypt()函数 -->
+    <button onclick="encrypt()">加密</button>
+    <!-- 解密按钮，点击时调用decrypt()函数 -->
+    <button onclick="decrypt()">解密</button><br><br>
+
+    <!-- 打开加密文件按钮 -->
+    <button onclick="openEncryptedFile()">打开加密文件</button>
+    <!-- 打开解密文件按钮 -->
+    <button onclick="openDecryptedFile()">打开解密文件</button>
+</div>
+
+<script>
+var keys = generateRSAKeys(); // 在页面加载时生成 RSA 密钥对
+var publicKey = keys.publicKey;
+var privateKey = keys.privateKey;
+
+// 生成 RSA 密钥对
+function generateRSAKeys() {
+    var p = getRandomPrime();
+    var q = getRandomPrime();
+    var n = p * q;
+    var phi = (p - 1) * (q - 1);
+    var e = 65537; // 公钥指数
+    var d = modInverse(e, phi); // 私钥指数
+    return { publicKey: { e, n }, privateKey: { d, n } };
+}
+
+//读取文件内容
+function readFile() {
+    var fileInput = document.getElementById('fileInput');
+    var file = fileInput.files[0];
+
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('inputText').value = e.target.result;
+    };
+    reader.readAsText(file);
+}
+
+// 加密函数
+function encrypt() {
+    var inputText = document.getElementById("inputText").value;
+    var publicKey = keys.publicKey;
+    var encrypted = [];
+    for (var i = 0; i < inputText.length; i++) {
+        encrypted.push(modularExponentiation(inputText.charCodeAt(i), publicKey.e, publicKey.n));
+    }
+    document.getElementById("encryptedText").value = encrypted.join(",");
+}
+
+// 解密函数
+function decrypt() {
+    var encryptedText = document.getElementById("encryptedText").value.split(",");
+    var privateKey = keys.privateKey;
+    var decrypted = "";
+    for (var i = 0; i < encryptedText.length; i++) {
+        decrypted += String.fromCharCode(modularExponentiation(parseInt(encryptedText[i]), privateKey.d, privateKey.n));
+    }
+    document.getElementById("decryptedText").value = decrypted;
+}
+
+// 打开加密文件
+function openEncryptedFile() {
+    var encryptedText = document.getElementById("encryptedText").value;
+    download("encrypted.txt", encryptedText);
+}
+
+// 打开解密文件
+function openDecryptedFile() {
+    var decryptedText = document.getElementById("decryptedText").value;
+    download("decrypted.txt", decryptedText);
+}
+
+// 下载文件
+function download(filename, text) {
+    var element = document.createElement('a');
+    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+    element.setAttribute('download', filename);
+    element.style.display = 'none';
+    document.body.appendChild(element);
+    element.click();
+    document.body.removeChild(element);
+}
+
+// 判断是否为质数
+function isPrime(num) {
+    if (num <= 1) return false;
+    if (num <= 3) return true;
+    
+    if (num % 2 === 0 || num % 3 === 0) return false;
+
+    let i = 5;
+    while (i * i <= num) {
+        if (num % i === 0 || num % (i + 2) === 0) return false;
+        i += 6;
+    }
+
+    return true;
+}
+
+// 获取随机质数
+function getRandomPrime() {
+    // 实现获取随机质数的方法
+    while(1){
+        const randomNumber = Math.floor(Math.random() * 1000) + 1000;
+        if(isPrime(randomNumber))return randomNumber;
+    }
+}
+
+// 计算模反元素
+function modInverse(a, m) {
+    a = ((a % m) + m) % m; // 确保 a 在 0 到 m-1 之间
+    for (let x = 1; x < m; x++) {
+        if ((a * x) % m === 1) {
+            return x;
+        }
+    }
+    return null; // 如果不存在模反元素，则返回 null
+}
+
+// 模幂运算
+function modularExponentiation(base, exponent, modulus) {
+    var result = 1;
+    base = base % modulus;
+    while (exponent > 0) {
+        if (exponent % 2 === 1) {
+            result = (result * base) % modulus;
+        }
+        exponent = Math.floor(exponent / 2);
+        base = (base * base) % modulus;
+    }
+    return result;
+}
+</script>
+
+</body>
+</html>
